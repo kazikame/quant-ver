@@ -1,7 +1,0 @@
-graphs/**
-special_graphs/**
-__pycache__/**
-*.out
-.vscode/
-*.smt
-*.log
