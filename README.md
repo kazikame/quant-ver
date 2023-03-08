@@ -6,5 +6,5 @@ See the following folders for the case studies
 |------------|
 | [Work Stealing](./work-stealing/) |
 | SRTP |
-| Linux CPU Scheduler |
-| All Ring Reduce Scheduler |
+| [Linux CPU Scheduler](./linux-lb/) |
+| [All Ring Reduce Scheduler](./allring-reduce/) |
