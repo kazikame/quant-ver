@@ -88,9 +88,9 @@ class DAG:
             for i in range(c.MAX_INST_PER_THREAD):
                 pass
                 # o.add(o.And(v.execution_time[T][i] > 0))
-                o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] >= c.MIN_EXECUTION_TIME_PER_INST)))
-                o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST)))
-                # o.add(o.And(v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST * v.execution_time[0][0]))
+                # o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] >= c.MIN_EXECUTION_TIME_PER_INST)))
+                # o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST)))
+                o.add(o.And(v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST * v.execution_time[0][0]))
                 o.add(o.Implies(i >= v.num_instructions[T], v.execution_time[T][i] == 0))
 
         '''
