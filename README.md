@@ -1,6 +1,6 @@
 # Quantitative Verification
 
-See the following folders for the case studies
+See the following folders for each case study
 
 | Case Study |
 |------------|
