@@ -1,11 +1,15 @@
 
 class Config:
 
+    # New : Tasks!
+    NUM_TASKS = 3
+
     # Number of processors
     NUM_PROC: int = 2
 
     # Number of threads
     NUM_THREADS: int = 3
+
 
     # Minimum number of instructions per thread
     # THIS CAN BE THE SAME AS MAX, and it likely wouldn't affect the power of the model.
