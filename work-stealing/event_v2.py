@@ -32,28 +32,32 @@ class Workload:
         ExecutionTime is bounded from below
         '''
         for t in range(c.NUM_TASKS):
-            o.add(v.exec_t[t] > 0)
+            o.add(v.exec_t[t] >= 0)
         
         '''
         Edge Validity: there can be atmost one edge between two tasks
         '''
         for t1 in range(c.NUM_TASKS):
+            # o.add(Not(v.join[t1][t1]))
             for t2 in range(c.NUM_TASKS):
                 o.add(Implies(v.seq[t1][t2], o.Not(v.join[t1][t2])))
-                o.add(Implies(v.join[t1][t2], o.Not(v.seq[t1][t2])))
+                # o.add(Implies(v.join[t1][t2], o.Not(v.seq[t1][t2])))
         
         '''
         Seq Edge Validity: there can be atmost one outgoing seq edge from every task
         '''
         for t in range(c.NUM_TASKS):
+            # o.add(Not(v.seq[t][t]))
             o.add(PbLe([(v.seq[t][t2], 1) for t2 in range(c.NUM_TASKS)], 1))
 
         '''
-        parent
+        parent: ensure there is topological ordering, so that cycles are not allowed
         '''
         for t1 in range(c.NUM_TASKS):
             for t2 in range(c.NUM_TASKS):
                 o.add(v.parent[t1][t2] == o.Or(v.seq[t1][t2], v.join[t1][t2]))
+                if t2 <= t1:
+                    o.add(Not(v.parent[t1][t2]))
 
 
 class SchedulingAlgorithm:
@@ -79,8 +83,8 @@ class SchedulingAlgorithm:
         '''
         WS state
         '''
-        self.origin = [[o.Bool(f"OriginProcessor(t={t}, p={p})") for p in range(c.NUM_PROC)] for t in range(c.NUM_TASKS)]
-        self.stolen = [o.Bool(f"Stolen(t={t})") for t in range(c.NUM_TASKS)]
+        self.origin = [[o.Bool(f"{pre}_OriginProcessor(t={t}, p={p})") for p in range(c.NUM_PROC)] for t in range(c.NUM_TASKS)]
+        self.stolen = [o.Bool(f"{pre}_Stolen(t={t})") for t in range(c.NUM_TASKS)]
 
 
     def add_constraints(self) -> None:
@@ -96,11 +100,10 @@ class SchedulingAlgorithm:
         3. If no parent, the node is ready at time = 0
         '''
         for t in range(c.NUM_TASKS):
-            o.add(v.ready_t[t] <= v.ready_t[t])
             expr = []
             has_parent = []
             for t2 in range(c.NUM_TASKS):
-                o.add(o.Implies(o.And(dag.parent[t2][t]),
+                o.add(o.Implies(dag.parent[t2][t],
                                         self.end_t[t2] <= self.ready_t[t]))
                 expr.append(o.And(dag.parent[t2][t],
                                     self.ready_t[t] == self.end_t[t2]))
@@ -127,7 +130,7 @@ class SchedulingAlgorithm:
         '''
         o.add(o.And(*[v.time_taken >= v.end_t[t] for t in range(c.NUM_TASKS)]))
         o.add(o.Or(*[v.time_taken == v.end_t[t] for t in range(c.NUM_TASKS)]))
-
+        o.add(v.time_taken > 0)
         print("Total Time", o.check())
 
         '''
@@ -303,6 +306,7 @@ def get_triggers(v : SchedulingAlgorithm):
     1. End Time Trigger: for every task, there exists a trigger with that id=task_id, type=ET, time=end_t
     2. Ready Time Trigger: for every task, there exists a trigger with that id=task_id, type=ET, time=end_t
     3. Triggers are ordered in time
+        a. to break ties, ready triggers MUST occur before end triggers
     '''
     for t in range(c.NUM_TASKS):
         o.add(Or(*[And(
@@ -318,6 +322,7 @@ def get_triggers(v : SchedulingAlgorithm):
 
     for i in range(NUM_TRIGGERS-1):
         o.add(triggers[i].time <= triggers[i+1].time)
+        o.add(Implies(triggers[i].time == triggers[i+1].time, Not(And(triggers[i].type['ET'], triggers[i+1].type['RT']))))
 
     for i in range(NUM_TRIGGERS):
         trigger = triggers[i]
@@ -356,7 +361,7 @@ def work_stealing(v : SchedulingAlgorithm, triggers : [Trigger]) -> None:
         cond1 = []
         for t in range(c.NUM_TASKS):
             for p in range(c.NUM_PROC):
-                cond = And(v.origin[t][p], trigger.id[t])
+                cond = And(v.origin[t][p], trigger.free_procs[p], trigger.id[t])
                 o.add(Implies(trigger.type['RT'],
                     Implies(cond, schedule_next(trigger, t, p))
                 ))
@@ -501,11 +506,16 @@ if __name__ == '__main__':
     ws.add_constraints()
     work_stealing(ws, get_triggers(ws))
 
-    ws.visualize(o.model(), "ws_model")
 
     ## Optimal
     opt = SchedulingAlgorithm(dag, "opt")
     opt.add_constraints()
+
+    o.add(ws.time_taken >= 2.5 * opt.time_taken)
+    print(o.check())
+    m = o.model()
+    ws.visualize(m, "ws_model")
+    opt.visualize(m, "opt_model")
 
     print("Added all constraints")
 

@@ -2,10 +2,10 @@
 class Config:
 
     # New : Tasks!
-    NUM_TASKS = 3
+    NUM_TASKS = 5
 
     # Number of processors
-    NUM_PROC: int = 2
+    NUM_PROC: int = 3
 
     # Number of threads
     NUM_THREADS: int = 3
