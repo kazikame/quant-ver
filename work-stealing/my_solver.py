@@ -2,7 +2,7 @@ from typing import Any, List, Dict
 from z3 import ArithRef, Bool, BoolRef, Function, FuncDeclRef, Int, Real,\
     EnumSort, Const, Solver, Optimize
 from z3.z3 import And, Not, Or, BoolSort, Datatype, ForAll, Implies, IntSort, RealSort, Reals, sat, set_param
-
+from z3 import PbEq
 
 def extract_vars(e: BoolRef) -> List[str]:
     if e.children() == []:
@@ -157,6 +157,9 @@ class MySolver:
 
     def Not(self, expr) -> BoolRef:
         return Not(expr)
+    
+    def ExactlyK(self, l, k) -> BoolRef:
+        return PbEq([(entry, 1) for entry in l], k)
 
     def maximize(self, expr):
         return self.s.maximize(expr)
