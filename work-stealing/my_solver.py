@@ -160,6 +160,16 @@ class MySolver:
     
     def ExactlyK(self, l, k) -> BoolRef:
         return PbEq([(entry, 1) for entry in l], k)
+    
+    def minimum(self, v, x) -> None:
+        self.s.add(Or([v == x[i] for i in range(len(x))])) # v is an element in x)
+        for i in range(len(x)):
+            self.s.add(v <= x[i]) # and it's the smallest
+
+    def maximum(self, v, x) -> None:
+        self.s.add(Or([v == x[i] for i in range(len(x))])) # v is an element in x)
+        for i in range(len(x)):
+            self.s.add(v >= x[i]) # and it's the smallest
 
     def maximize(self, expr):
         return self.s.maximize(expr)
