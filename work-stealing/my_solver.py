@@ -1,6 +1,6 @@
 from typing import Any, List, Dict
 from z3 import ArithRef, Bool, BoolRef, Function, FuncDeclRef, Int, Real,\
-    EnumSort, Const, Solver, Optimize
+    EnumSort, Const, Solver, SolverFor, Optimize
 from z3.z3 import And, Not, Or, BoolSort, Datatype, ForAll, Implies, IntSort, RealSort, Reals, sat, set_param
 from z3 import PbEq
 
@@ -30,7 +30,7 @@ class MySolver:
     types: Dict[str, Any] = {}
 
     def __init__(self):
-        self.s = Solver()
+        self.s = SolverFor('QF_LRA')
         # set_param('parallel.enable', True)
         self.num_constraints = 0
         self.variables = {}

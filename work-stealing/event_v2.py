@@ -1,5 +1,5 @@
 from typing import List
-from z3.z3 import ArithRef, BoolRef, ModelRef, is_algebraic_value, is_int_value, is_rational_value, is_true, sat, PbEq, PbLe, PbGe, And, Or, Implies, Not, String
+from z3.z3 import ArithRef, BoolRef, ModelRef, is_algebraic_value, is_int_value, is_rational_value, is_true, sat, PbEq, PbLe, PbGe, And, Or, Implies, Not, String, AtMost
 from my_solver import MySolver
 from config import Config
 import graphviz
@@ -31,8 +31,11 @@ class Workload:
         '''
         ExecutionTime is bounded from below
         '''
+        atleast_one = []
         for t in range(c.NUM_TASKS):
+            atleast_one.append(v.exec_t[t] > 0)
             o.add(v.exec_t[t] >= 0)
+        o.add(Or(*atleast_one))
         
         '''
         Edge Validity: there can be atmost one edge between two tasks
@@ -48,7 +51,7 @@ class Workload:
         '''
         for t in range(c.NUM_TASKS):
             # o.add(Not(v.seq[t][t]))
-            o.add(PbLe([(v.seq[t][t2], 1) for t2 in range(c.NUM_TASKS)], 1))
+            o.add(AtMost(*v.seq[t], 1))
 
         '''
         parent: ensure there is topological ordering, so that cycles are not allowed
@@ -60,7 +63,7 @@ class Workload:
                     o.add(Not(v.parent[t1][t2]))
 
 
-class SchedulingAlgorithm:
+class Schedule:
     c : Config
     o : MySolver
     dag : Workload
@@ -259,7 +262,7 @@ class Trigger:
     procs : [BoolRef]
     seq : [BoolRef]
     join : [BoolRef]
-    def __init__(self, v : SchedulingAlgorithm, pre):
+    def __init__(self, v : Schedule, pre):
         self.c = v.c
         self.o = v.o
         c = self.c
@@ -295,7 +298,7 @@ class Trigger:
         
         print(f"Trigger {pre} done", o.check())
 
-def get_triggers(v : SchedulingAlgorithm):
+def get_triggers(v : Schedule) -> [Trigger]:
     c = v.c
     o = v.o
     NUM_TRIGGERS = 2*c.NUM_TASKS
@@ -339,21 +342,19 @@ def get_triggers(v : SchedulingAlgorithm):
     print("All Triggers done", o.check())
     return triggers
 
-def work_stealing(v : SchedulingAlgorithm, triggers : [Trigger]) -> None:
+def work_stealing(v : Schedule, triggers : [Trigger]) -> None:
     o = v.o
     c = v.c
 
     # schedule this `task` next for the current processor
     def schedule_next(trigger : Trigger, task : int, proc : int):
-        # TODO: start_time of this next task must be max(end_time of current task, ready_time of next_task)
         return And(v.start_t[task] == trigger.time, v.sched[task][proc], trigger.next_task[task], trigger.next_proc[proc])
-        # return And(*[v.sched[task][p] == trigger.procs[p] for p in range(c.NUM_PROC)], nt_end_t == v.end_t[task])
 
     # For each trigger
     for trigger in triggers:
 
         '''
-        RT:
+        RT: task 't' is ready 
         1. if origin proc is free => schedule on that
         2. if origin proc is not free, and there exists a free proc with no available tasks in its queue ==> schedule on ANY of these
         3. otherwise, do not schedule (next_task == [False], next_proc == [False])
@@ -430,9 +431,6 @@ def work_stealing(v : SchedulingAlgorithm, triggers : [Trigger]) -> None:
 
             def available_task_count_ge(proc, num):
                 return PbGe([(And(tasks_not_originating_on_p[t], v.origin[t][proc]), 1) for t in range(c.NUM_TASKS)], num)
-            # available_task_counts = [
-            #     o.Sum([o.If(tasks_not_originating_on_p[t] and v.origin[t][u], 1, 0) for t in range(c.NUM_TASKS)]) for u in other_procs
-            # ]
 
             stealing_allowed = [
                 o.Or(
@@ -461,38 +459,7 @@ def work_stealing(v : SchedulingAlgorithm, triggers : [Trigger]) -> None:
             o.add(o.Implies(cond_c, And(*[Not(trigger.next_task[t]) for t in range(c.NUM_TASKS)], 
                                         *[Not(trigger.next_proc[p]) for p in range(c.NUM_PROC)])))
 
-
-        # cond3 = []
-        # possible_tasks = []
-        # must_be_youngest = []
-        # for t in range(c.NUM_TASKS):
-        #     for p in range(c.NUM_PROC):
-        #         cond = And(v.origin[t][p], trigger.available_tasks[t], curr_proc[p])
-        #         possible_tasks.append(And(cond, schedule_next(trigger, t, p)))
-        #         must_be_youngest.append(Implies(cond, trigger.next_task_rt >= v.ready_t[t]))
-        #         cond3.append(cond)
-        # cond3 = Or(*cond3)
-        # o.add(Implies(trigger.type['ET'], 
-        #               Implies(cond3, And(Or(*possible_tasks),   # Task must be one of the possible tasks
-        #                                  *must_be_youngest))))  # Task must be the youngest in the queue
-
-        # cond4 = []
-        # possible_tasks2 = []
-        # must_be_oldest = []
-        # for t in range(c.NUM_TASKS):
-        #     origin_proc_not_free = And(*[Implies(v.origin[t][p], Not(trigger.free_procs[p])) for p in range(c.NUM_PROC)])
-        #     for p in range(c.NUM_PROC):
-        #         cond = And(origin_proc_not_free, trigger.available_tasks[t], curr_proc[p])
-        #         possible_tasks.append(And(cond, schedule_next(trigger, t, p)))
-        #         must_be_youngest.append(Implies(cond, trigger.next_task_rt >= v.ready_t[t]))
-        #         cond4.append(cond)
-        # cond4 = Or(*cond4)
-        # o.add(Implies(trigger.type['ET'], 
-        #               Implies(cond3, And(Or(*possible_tasks),   # Task must be one of the possible tasks
-        #                                  *must_be_youngest))))  # Task must be the youngest in the queue
-
         print("Work Stealing", o.check())
-
 
 
 if __name__ == '__main__':
@@ -502,21 +469,22 @@ if __name__ == '__main__':
     dag.add_constraints()
 
     ## Work Stealing
-    ws = SchedulingAlgorithm(dag, "ws")
+    ws = Schedule(dag, "ws")
     ws.add_constraints()
     work_stealing(ws, get_triggers(ws))
 
 
     ## Optimal
-    opt = SchedulingAlgorithm(dag, "opt")
+    opt = Schedule(dag, "opt")
     opt.add_constraints()
 
-    o.add(ws.time_taken >= 2.5 * opt.time_taken)
-    print(o.check())
-    m = o.model()
-    ws.visualize(m, "ws_model")
-    opt.visualize(m, "opt_model")
+    o.add(ws.time_taken >= 1.7 * opt.time_taken)
+    print(o.s.sexpr())
+    # print(o.check())
+    # m = o.model()
+    # ws.visualize(m, "ws_model")
+    # opt.visualize(m, "opt_model")
 
-    print("Added all constraints")
+    # print("Added all constraints")
 
 

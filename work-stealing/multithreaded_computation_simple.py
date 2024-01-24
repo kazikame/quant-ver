@@ -63,15 +63,6 @@ class DAG:
         for T in range(c.NUM_THREADS):
             for i in range(c.MAX_INST_PER_THREAD):
                 o.add(cs_range == v.cs_delay_per_thread[T][i])
-
-        # for T in range(c.NUM_THREADS):
-        #     for i in range(c.MAX_INST_PER_THREAD):
-        #         for T2 in range(c.NUM_THREADS):
-        #             for i2 in range(c.MAX_INST_PER_THREAD):
-        #                 o.add(v.cs_delay_per_thread[T][i] <= cs_range * v.execution_time[T2][i2])
-
-                # o.add((v.cs_delay_per_thread[T][i] - v.cs_delay_per_thread[0][0]) <= cs_range)
-                # o.add((v.cs_delay_per_thread[0][0] - v.cs_delay_per_thread[T][i]) <= cs_range)
                 
     '''
     Adds constraints for a valid multithreaded computation DAG
@@ -87,10 +78,10 @@ class DAG:
         for T in range(c.NUM_THREADS):
             for i in range(c.MAX_INST_PER_THREAD):
                 pass
-                # o.add(o.And(v.execution_time[T][i] > 0))
+                o.add(o.And(v.execution_time[T][i] >= 0))
                 # o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] >= c.MIN_EXECUTION_TIME_PER_INST)))
                 # o.add(o.And(o.Implies(i < v.num_instructions[T], v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST)))
-                o.add(o.And(v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST * v.execution_time[0][0]))
+                # o.add(o.And(v.execution_time[T][i] <= c.MAX_EXECUTION_TIME_PER_INST * v.execution_time[0][0]))
                 o.add(o.Implies(i >= v.num_instructions[T], v.execution_time[T][i] == 0))
 
         '''
@@ -131,7 +122,7 @@ class DAG:
         # print(c.MIN_INST_PER_THREAD)
         # print(c.MAX_INST_PER_THREAD)
         # print("DAG:", o.check())
-        o.add(tot <= c.MAX_TOTAL_INST)
+        # o.add(tot <= c.MAX_TOTAL_INST)
         # print("DAG:", o.check())
 
         # '''
@@ -150,10 +141,17 @@ class DAG:
         1. Join edges cannot be between same thread
         2. Spawn edges cannot be between the same thread
         '''
-        for T in range(c.NUM_THREADS):
+        # for T in range(c.NUM_THREADS):
+        #     for i in range(c.MAX_INST_PER_THREAD):
+        #         for j in range(c.MAX_INST_PER_THREAD):
+        #             o.add(o.Not(v.join_edge[T][i][T][j]))
+        
+        # TODO: REMOVE THIS LATER
+        for T1 in range(c.NUM_THREADS):
             for i in range(c.MAX_INST_PER_THREAD):
-                for j in range(c.MAX_INST_PER_THREAD):
-                    o.add(o.Not(v.join_edge[T][i][T][j]))
+                for T2 in range(c.NUM_THREADS):
+                    for j in range(c.MAX_INST_PER_THREAD):
+                        o.add(o.Not(v.join_edge[T1][i][T2][j]))
         
         # print("DAG:", o.check())
         

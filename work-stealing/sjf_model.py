@@ -5,7 +5,7 @@ from my_solver import MySolver
 from config import Config
 import graphviz
 
-NT = 4
+NT = 5
 NUM_EVENTS = NT*2
 
 class Event:
@@ -13,9 +13,13 @@ class Event:
         self.o = o
 
         self.time = o.Real(f'{id}_time')
-        self.free = o.Bool(f'{id}_free')
+        self.free = o.Bool(f'{id}_free') # true if the processor is free
         self.task_id = [o.Bool(f'{id}_task_id={i}') for i in range(NT)]
-        self.ready_tasks = [o.Bool(f'{id}_ready_t={i}') for i in range(NT)]
+
+        self.finished_tasks = [o.Bool(f'{id}_finished_t={i}' for i in range(NT))]
+
+        self.arrival_times = [o.Real(f'{id}_arrival_t={i}') for i in range(NT)]
+        self.ready_tasks = [o.Bool(f'{id}_ready_t={i}') for i in range(NT)] # 
         self.lengths = [o.Real(f'{id}_len_t={i}') for i in range(NT)]
 
         # Output

@@ -5,7 +5,7 @@ from my_solver import MySolver
 from config import Config
 import graphviz
 
-NT = 5
+NT = 2
 NUM_EVENTS = NT*2
 
 class Event:
@@ -54,9 +54,11 @@ def sjf(o : MySolver, event : Event, w : Workload):
         o.add(Implies(event.next_task[t], shortest_task[t]))
 
 def opt(o : MySolver, event : Event, w : Workload):
-    o.add(AtMost(*event.next_task, 1))
-    o.add(Implies(Or(*event.ready_tasks), Or(*event.next_task)))
-    o.add(And(*[Implies(event.next_task[t], event.ready_tasks[t]) for t in range(NT)]))
+    # o.add(AtMost(*event.next_task, 1))
+    # o.add(Implies(Or(*event.ready_tasks), Or(*event.next_task)))
+    # o.add(And(*[Implies(event.next_task[t], event.ready_tasks[t]) for t in range(NT)]))
+    pass
+
 
 def add_system(o : MySolver, w : Workload, cur_event : Event, next_event : Event): 
     for t in range(NT):
@@ -142,7 +144,7 @@ if __name__ == "__main__":
 
     tt_sjf = get_total_time(o, w, events, "sjf")
     tt_opt = get_total_time(o, w, events_opt, "opt")
-    o.add(tt_sjf > 2*tt_opt)
+    o.add(tt_sjf > tt_opt)
     print(o.check())
     m = o.model()
 
